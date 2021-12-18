@@ -11,31 +11,29 @@ namespace Kommissar.Tests.Mocks;
 
 public class MockKubernetes : Mock<IKubernetes>
 {
-    public MockKubernetes MockGetListofEnvs(IEnumerable<string> filter, int namespacesPerFilter = 1)
+    public MockKubernetes MockGetListOfEnvs(IEnumerable<string> filter, int namespacesPerFilter = 1)
     {
-        var namepsaces = new List<string>();
+        var namespaces = new List<string>();
         foreach (var prefix in filter)
         {
-            // var x = new Faker<V1Pod>()
-            //     .RuleFor(u => u.Metadata.Namespace(), (f, u) => f.Kubernetes().NamespaceWithEnvironment(prefix));
             var x = new Faker<V1Pod>()
-                .RuleFor(u => u.Metadata, f => new Faker<V1ObjectMeta>()
-                    .RuleFor(u => u.NamespaceProperty, (f, u)
-                        => $"{f.Kubernetes().Container()}-{f.Kubernetes().Environment()}"));
+                .RuleFor(u => u.Metadata, _ => new Faker<V1ObjectMeta>()
+                    .RuleFor(u => u.NamespaceProperty, (f, _)
+                        => $"{prefix}-{f.Kubernetes().Container()}-{f.Kubernetes().Environment()}"));
 
             var generated = x.Generate(namespacesPerFilter);
-            generated.ForEach(x => namepsaces.Add( x.Metadata.Namespace()));
+            generated.ForEach(pod => namespaces.Add( pod.Metadata.Namespace()));
         }
         
         Setup(m => m.GetListofEnvs(filter))
-            .Returns(ValueTask.FromResult(namepsaces));
+            .Returns(ValueTask.FromResult(namespaces));
         return this;
     }
 
     public MockKubernetes MockCreateWatches(IEnumerable<string> namespaces)
     {
         var pods = new Faker<V1Pod>()
-            .RuleFor(u => u.Spec, (f, u) => new V1PodSpec()
+            .RuleFor(u => u.Spec, (f, _) => new V1PodSpec()
             {
                 Containers = new List<V1Container>()
                 {

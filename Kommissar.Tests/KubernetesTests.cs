@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Kommissar.Tests.Mocks;
@@ -20,11 +19,12 @@ public class KubernetesTest
     public async Task GetNamespaces(int numberOfNameSpaces)
     {
         var mockKubeServiced = new MockKubernetes()
-            .MockGetListofEnvs( new List<string>(){"mbr"}, numberOfNameSpaces);
+            .MockGetListOfEnvs( new List<string>(){"mbr"}, numberOfNameSpaces);
 
         var result = await mockKubeServiced.Object
             .GetListofEnvs(new List<string>{"mbr"});
 
+        result[0].Should().StartWith("mbr");
         result.Should().HaveCount(numberOfNameSpaces);
     }
 
