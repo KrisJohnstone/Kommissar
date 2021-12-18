@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Threading.Tasks;
 using k8s.Models;
 using Microsoft.Rest;
 
