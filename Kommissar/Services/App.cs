@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using k8s;
 using k8s.Models;
 using Kommissar.Model;
+using Kommissar.Repositories;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Rest;
@@ -14,32 +15,32 @@ public class App
 {
     private readonly AppSettings _appSettings;
     private readonly ILogger _logger;
-    private readonly IKubernetes _kube;
+    private readonly IWrapper _wrapper;
     private readonly KommissarRepo _kommissar;
 
-    public App(IOptions<AppSettings> appSettings, ILogger<App> logger, IKubernetes kube, KommissarRepo kommissar)
+    public App(IOptions<AppSettings> appSettings, ILogger<App> logger, IWrapper wrapper, KommissarRepo kommissar)
     {
         _logger = logger;
-        _kube = kube;
+        _wrapper = wrapper;
         _kommissar = kommissar;
         _appSettings = appSettings.Value;
     }
 
     public async ValueTask Run(string[] args)
     {
-        var namespaces = await _kube.GetListofEnvs(
+        var namespaces = await _wrapper.GetEnvList(
                                                     _appSettings.Namespaces.ToImmutableArray());
         if (namespaces.Count == 0)
         {
             _logger.LogCritical("No Namespaces Returned from Cluster");
             return;
         }
-        var watchlist = await _kube.CreateWatch(namespaces);
-
-        if (watchlist.Result.Body is not null || watchlist.Result.Body.Items.Count > 0)
-        {
-            await WatcherCallBack(watchlist);
-        }
+        //var watchlist = await _kube.CreateWatch(namespaces);
+        //
+        // if (watchlist.Result.Body is not null || watchlist.Result.Body.Items.Count > 0)
+        // {
+        //     await WatcherCallBack(watchlist);
+        // }
     }
 
     public async ValueTask WatcherCallBack(Task<HttpOperationResponse<V1PodList>> podlist)

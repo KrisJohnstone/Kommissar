@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Bogus;
 using k8s.Models;
+using Kommissar.Repositories;
 using Kommissar.Services;
 using Microsoft.Rest;
 using Moq;
@@ -11,21 +12,31 @@ namespace Kommissar.Tests.Mocks;
 
 public class MockKubernetes : Mock<IKubernetes>
 {
-    public MockKubernetes MockGetListOfEnvs(IEnumerable<string> filter, int namespacesPerFilter = 1)
+    public MockKubernetes MockGetListOfEnvs(IEnumerable<string> filterList, int namespacesNumber = 4)
     {
-        var namespaces = new List<string>();
-        foreach (var prefix in filter)
+        var namespaces = new V1NamespaceList()
         {
-            var x = new Faker<V1Pod>()
-                .RuleFor(u => u.Metadata, _ => new Faker<V1ObjectMeta>()
-                    .RuleFor(u => u.NamespaceProperty, (f, _)
-                        => $"{prefix}-{f.Kubernetes().Container()}-{f.Kubernetes().Environment()}"));
-
-            var generated = x.Generate(namespacesPerFilter);
-            generated.ForEach(pod => namespaces.Add( pod.Metadata.Namespace()));
-        }
+            Items = new List<V1Namespace>()
+        };
         
-        Setup(m => m.GetListofEnvs(filter))
+        var genericNamespaces = new Faker<V1Namespace>()
+                .RuleFor(u => u.Metadata, () => new Faker<V1ObjectMeta>()
+                    .RuleFor(u => u.Name, (f, u)
+                        => $"{f.Kubernetes().Project()}-{f.Kubernetes().Container()}-{f.Kubernetes().Environment()}"))
+                .Generate(50);
+        genericNamespaces.ForEach(x => namespaces.Items.Add(x));
+
+        foreach (var filter in filterList)
+        {
+            var x =  new Faker<V1Namespace>()
+                    .RuleFor(u => u.Metadata, () => new Faker<V1ObjectMeta>()
+                        .RuleFor(u => u.Name, (f, u)
+                            => $"{filter}-{f.Kubernetes().Container()}-{f.Kubernetes().Environment()}"))
+                    .Generate(namespacesNumber);
+            x.ForEach(i => namespaces.Items.Add(i));
+        }
+
+        Setup(m => m.GetListOfEnvs())
             .Returns(ValueTask.FromResult(namespaces));
         return this;
     }

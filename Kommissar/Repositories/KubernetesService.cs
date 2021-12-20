@@ -1,12 +1,9 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using k8s;
 using k8s.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Rest;
 
-namespace Kommissar.Services;
+namespace Kommissar.Repositories;
 public class KubernetesService : IKubernetes
 {
     private readonly ILogger _logger;
@@ -26,19 +23,12 @@ public class KubernetesService : IKubernetes
         return new Kubernetes(config);
     }
 
-    public async ValueTask<List<string>> GetListofEnvs(IEnumerable<string> filter)
+    public async ValueTask<V1NamespaceList> GetListOfEnvs()
     {
         _logger.LogInformation("Retrieving List of Namespaces");
         var kube = await GetClient();
         var nameSpaceList = await kube.ListNamespaceWithHttpMessagesAsync();
-        var mbrNamespaces = new List<string>();
-        
-        foreach (var s in filter)
-        {
-            mbrNamespaces = new List<string>(from item in nameSpaceList.Body.Items
-                where item.Metadata.Name.Split(new[] {'-'})[0] == s select item.Metadata.Name);
-        }
-        return mbrNamespaces.ToList();
+        return nameSpaceList.Body;
     }
     
     public async Task<Task<HttpOperationResponse<V1PodList>>> CreateWatch(IEnumerable<string> names)

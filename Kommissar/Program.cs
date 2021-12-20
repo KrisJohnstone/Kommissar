@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Kommissar.Model;
+using Kommissar.Repositories;
 using Kommissar.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +56,7 @@ public class Program
 
         // Add Services:
         services.AddTransient<IKubernetes, KubernetesService>();
+        services.AddTransient<IWrapper, WrapperService>();
         services.AddSingleton<KommissarRepo>();
 
         // Add App
