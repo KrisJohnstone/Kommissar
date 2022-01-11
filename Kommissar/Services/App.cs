@@ -15,14 +15,14 @@ public class App
 {
     private readonly AppSettings _appSettings;
     private readonly ILogger _logger;
-    private readonly IWrapper _wrapper;
-    private readonly KommissarRepo _kommissar;
+    private readonly IKubeWrapper _wrapper;
+    private readonly IKubeWrapper _kube;
 
-    public App(IOptions<AppSettings> appSettings, ILogger<App> logger, IWrapper wrapper, KommissarRepo kommissar)
+    public App(IOptions<AppSettings> appSettings, ILogger<App> logger, IKubeWrapper wrapper, IKubeWrapper kube)
     {
         _logger = logger;
         _wrapper = wrapper;
-        _kommissar = kommissar;
+        _kube = kube;
         _appSettings = appSettings.Value;
     }
 
@@ -35,6 +35,12 @@ public class App
             _logger.LogCritical("No Namespaces Returned from Cluster");
             return;
         }
+        // First we need to populate the dataset with current state.
+        
+        
+        
+        
+        
         //var watchlist = await _kube.CreateWatch(namespaces);
         //
         // if (watchlist.Result.Body is not null || watchlist.Result.Body.Items.Count > 0)
@@ -43,26 +49,8 @@ public class App
         // }
     }
 
-    public async ValueTask WatcherCallBack(Task<HttpOperationResponse<V1PodList>> podlist)
+    public async ValueTask PopulateCache(List<string> namespaces)
     {
-        var timer = Stopwatch.StartNew();
-        timer.Start();
-        using (podlist.Watch<V1Pod, V1PodList>(async (type, item) =>
-           {
-               _logger.LogInformation("Event Received of type: " +
-                                      "{type} in {namespace}", type, item.Metadata.NamespaceProperty);
-               
-               await _kommissar.AddOrUpdate(item.Namespace(), item.Spec.Containers.ToImmutableArray());
-           },
-           error =>
-           {
-               _logger.LogError(error, "Error Received while Watching");
-           },
-           () =>
-           {
-               _logger.LogInformation("Server Disconnected at {time}", timer.ElapsedMilliseconds);
-               timer.Stop();
-               new AsyncManualResetEvent().Set();
-           })) { }
+        
     }
 }

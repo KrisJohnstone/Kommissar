@@ -26,26 +26,32 @@ public class KommissarRepo
             if (value is null)
             {
                 _logger.LogInformation("New Container Added: {containerName} in {ns}", split[0], ns);
-                Data.Add($"{ns}:{containerName}", new Container()
+                Data.Add($"{ns}:{split[0]}", new Container()
                 {
-                    ContainerName = containerName,
-                    ContainerVersion = split[1]
+                        ContainerName = containerName,
+                        ContainerVersion = split[1]
                 });
                 continue;
             }
-            
-            if (value.ContainerVersion == split[1])
+
+            if (value.ContainerName == split[0] && value.ContainerVersion == split[1])
                 continue;
 
-            if (value.ContainerVersion != split[1])
+            if (value.ContainerName == split[0] && value.ContainerVersion != split[1])
             {
                 _logger.LogInformation("New Container Version Detected: {container}:{containerVersion}", containerName, split[1]);
-                Data[$"{ns}:{containerName}"] = new Container()
+                Data[$"{ns}:{split[0]}"] = new Container()
                 {
                     ContainerName = containerName,
                     ContainerVersion = split[1]
                 };
             }
         }
+    }
+
+    public async ValueTask<Container> GetContainer(string ns, string container)
+    {
+        Data.TryGetValue($"{ns}:{container}", out var value);
+        return value;
     }
 }

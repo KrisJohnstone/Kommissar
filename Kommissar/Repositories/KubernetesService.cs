@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Rest;
 
 namespace Kommissar.Repositories;
-public class KubernetesService : IKubernetes
+public class KubernetesService : IKubeRepo
 {
     private readonly ILogger _logger;
 
@@ -31,17 +31,24 @@ public class KubernetesService : IKubernetes
         return nameSpaceList.Body;
     }
     
-    public async Task<Task<HttpOperationResponse<V1PodList>>> CreateWatch(IEnumerable<string> names)
+    public async Task<HttpOperationResponse<V1PodList>> CreateWatch(IEnumerable<string> names)
     {
         _logger.LogInformation("Creating Watchers");
         var client = await GetClient();
-        Task<HttpOperationResponse<V1PodList>> podlistResp = null;
-
+        HttpOperationResponse<V1PodList> podlistResp = null;
         foreach (var name in names)
         {
             _logger.LogInformation("Creating Watcher for {name}", name);
-            podlistResp = client.ListNamespacedPodWithHttpMessagesAsync(name, watch: true);
+            podlistResp = await client.ListNamespacedPodWithHttpMessagesAsync(name, watch: true);
         }
         return podlistResp;
+    }
+
+    public async ValueTask<V1PodList> GetListOfPods(string ns)
+    {
+        _logger.LogInformation("Retrieving pods in {ns}", ns);
+        var client = await GetClient();
+        var pods = await client.ListNamespacedPodWithHttpMessagesAsync(ns);
+        return pods.Body;
     }
 }

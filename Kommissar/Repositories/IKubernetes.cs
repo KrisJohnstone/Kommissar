@@ -2,10 +2,12 @@ using k8s.Models;
 using Microsoft.Rest;
 
 namespace Kommissar.Repositories;
-public interface IKubernetes
+public interface IKubeRepo
 {
-    Task<Task<HttpOperationResponse<V1PodList>>> CreateWatch(IEnumerable<string> names);
+    Task<HttpOperationResponse<V1PodList>> CreateWatch(IEnumerable<string> names);
 
     ValueTask<V1NamespaceList> GetListOfEnvs();
+
+    ValueTask<V1PodList> GetListOfPods(string ns);
 }
     

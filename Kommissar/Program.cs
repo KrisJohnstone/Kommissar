@@ -55,8 +55,8 @@ public class Program
                 });
 
         // Add Services:
-        services.AddTransient<IKubernetes, KubernetesService>();
-        services.AddTransient<IWrapper, WrapperService>();
+        services.AddTransient<IKubeRepo, KubernetesService>();
+        services.AddTransient<IKubeWrapper, KubeWrapper>();
         services.AddSingleton<KommissarRepo>();
 
         // Add App
