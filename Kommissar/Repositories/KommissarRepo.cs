@@ -20,15 +20,14 @@ public class KommissarRepo
         foreach (var container in containers)
         {
             var split = container.Image.Split(new[] {':'}, StringSplitOptions.TrimEntries);
-            var containerName = split[0].Split(new[] { '.' }, StringSplitOptions.None).Last();
-            Data.TryGetValue($"{ns}:{containerName}", out var value);
+            Data.TryGetValue($"{ns}:{split[0]}", out var value);
 
             if (value is null)
             {
                 _logger.LogInformation("New Container Added: {containerName} in {ns}", split[0], ns);
                 Data.Add($"{ns}:{split[0]}", new Container()
                 {
-                        ContainerName = containerName,
+                        ContainerName = split[0],
                         ContainerVersion = split[1]
                 });
                 continue;
@@ -39,10 +38,10 @@ public class KommissarRepo
 
             if (value.ContainerName == split[0] && value.ContainerVersion != split[1])
             {
-                _logger.LogInformation("New Container Version Detected: {container}:{containerVersion}", containerName, split[1]);
+                _logger.LogInformation("New Container Version Detected: {container}:{containerVersion}", split[0], split[1]);
                 Data[$"{ns}:{split[0]}"] = new Container()
                 {
-                    ContainerName = containerName,
+                    ContainerName = split[0],
                     ContainerVersion = split[1]
                 };
             }

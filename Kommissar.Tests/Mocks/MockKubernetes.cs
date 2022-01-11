@@ -9,7 +9,7 @@ namespace Kommissar.Tests.Mocks;
 
 public class MockKubernetes : Mock<IKubeRepo>
 {
-    public MockKubernetes MockGetListOfEnvs(IEnumerable<string> filterList, int namespacesNumber = 4)
+    public (V1NamespaceList namespaces, MockKubernetes mockKubernetes) MockGetListOfEnvs(IEnumerable<string> filterList, int namespacesNumber = 4)
     {
         var namespaces = new V1NamespaceList()
         {
@@ -35,7 +35,7 @@ public class MockKubernetes : Mock<IKubeRepo>
 
         Setup(m => m.GetListOfEnvs())
             .Returns(ValueTask.FromResult(namespaces));
-        return this;
+        return (namespaces, this);
     }
     
     // public MockKubernetes MockCreateWatches(IEnumerable<string> namespaces)
@@ -67,7 +67,7 @@ public class MockKubernetes : Mock<IKubeRepo>
     //     return this;
     // }
 
-    public MockKubernetes MockGetListOfPods(string ns, int containersPerPod, int numberOfPods)
+    public (List<V1Pod> podList, MockKubernetes mockKubernetes) MockGetListOfPods(string ns, int containersPerPod, int numberOfPods)
     {
         var podList = new List<V1Pod>();
         
@@ -85,6 +85,6 @@ public class MockKubernetes : Mock<IKubeRepo>
         {
             Items = podList
         }));
-        return this;
+        return (podList, this);
     }
 }

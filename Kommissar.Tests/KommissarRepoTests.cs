@@ -53,16 +53,16 @@ public class KommissarRepoTests
         var originalContainer = await _kom.GetContainer("abc-wordpress", containers
             .FirstOrDefault()?.Image.Split(new[] {':'}, StringSplitOptions.TrimEntries)[0]);
         
-        //Copy
         var v = originalContainer.ContainerVersion.Split(new[] {'v', '.'}, StringSplitOptions.TrimEntries);
-
+        var newVersion = $"{v[0]}.{v[1]}.{v[2]+1}";
         await _kom.AddOrUpdate("abc-wordpress", ImmutableArray.Create(new V1Container()
         {
-            Image = $"{originalContainer.ContainerName}:{v[0]}.{v[1]}.{v[2]+1}"
+            Image = $"{originalContainer.ContainerName}:{newVersion}"
         }));
         var result = await _kom.GetContainer("abc-wordpress", originalContainer.ContainerName);
 
         result.ContainerName.Should().Be(originalContainer.ContainerName);
         result.ContainerVersion.Should().NotBeSameAs(originalContainer.ContainerVersion);
+        result.ContainerVersion.Should().Be(newVersion);
     }
 }

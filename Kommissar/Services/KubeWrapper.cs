@@ -66,9 +66,9 @@ public class KubeWrapper : IKubeWrapper
         foreach (var ns in namespaces)
         {
             var pods = await _kube.GetListOfPods(ns);
-            foreach (var podsItem in pods.Items)
+            foreach (var pod in pods.Items)
             {
-                await _kommissar.AddOrUpdate(podsItem.Namespace(), podsItem.Spec.Containers.ToImmutableArray());
+                await _kommissar.AddOrUpdate(pod.Namespace(), pod.Spec.Containers.ToImmutableArray());
             }
         }
     }
