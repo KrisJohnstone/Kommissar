@@ -4,7 +4,7 @@ using Microsoft.Rest;
 namespace Kommissar.Repositories;
 public interface IKubeRepo
 {
-    Task<HttpOperationResponse<V1PodList>> CreateWatch(IEnumerable<string> names);
+    ValueTask<List<Task<HttpOperationResponse<V1PodList>>>> CreateWatch(IEnumerable<string> names);
 
     ValueTask<V1NamespaceList> GetListOfEnvs();
 

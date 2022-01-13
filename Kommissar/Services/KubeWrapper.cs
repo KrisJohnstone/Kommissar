@@ -38,27 +38,52 @@ public class KubeWrapper : IKubeWrapper
         return mbrNamespaces.ToList();
     }
     
-    public async ValueTask WatcherCallBack(HttpOperationResponse<V1PodList> podlist)
+    public async ValueTask WatcherCallBack(List<string> namespaces)
     {
         var timer = Stopwatch.StartNew();
         timer.Start();
-        using (podlist.Watch<V1Pod, V1PodList>(async (type, item) =>
-           {
-               _logger.LogInformation("Event Received of type: " +
-                                      "{type} in {namespace}", type, item.Metadata.NamespaceProperty);
-       
+
+        var pods = await _kube.CreateWatch(namespaces);
+        var watches = new List<Task>();
+        foreach (var task in pods)
+        {
+            watches.Add(Watcher(task));
+        }
+        await Task.WhenAll(watches);
+    }
+
+    private async Task Watcher(Task<HttpOperationResponse<V1PodList>> task)
+    {
+        var timer = Stopwatch.StartNew();
+        timer.Start();
+        
+        await foreach (var (type, item) in task.WatchAsync<V1Pod, V1PodList>())
+        {
+            _logger.LogInformation("Event Received of type: " +
+                                   "{type} in {namespace}", type, item.Metadata.NamespaceProperty);
+            
+            if(type == WatchEventType.Added)
+            {
+               //trigger update to repos
                await _kommissar.AddOrUpdate(item.Namespace(), item.Spec.Containers.ToImmutableArray());
-           },
-           error =>
-           {
-               _logger.LogError(error, "Error Received while Watching");
-           },
-           () =>
-           {
-               _logger.LogInformation("Server Disconnected at {time}", timer.ElapsedMilliseconds);
-               timer.Stop();
-               new AsyncManualResetEvent().Set();
-           })) { }
+            }
+
+            if (type == WatchEventType.Error)
+            {
+                //trigger what??
+            }
+
+            if (type == WatchEventType.Deleted)
+            {
+                //trigger update to repos
+            }
+            
+            if (type == WatchEventType.Modified)
+            {
+                //trigger update to repos
+            }
+        }
+        _logger.LogInformation("Watch Event Lasted {time}", timer.ElapsedMilliseconds);
     }
 
     public async ValueTask GetCurrentState(List<string> namespaces)

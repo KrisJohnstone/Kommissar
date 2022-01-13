@@ -47,20 +47,37 @@ public class KubeWrapperTests
             kommissar);
         await wrapper.GetCurrentState(new List<string>() {ns[0]});
         
-        var kube = new KubernetesService(Mock.Of<ILogger<KubernetesService>>());
        
-        var watch = await kube.CreateWatch(ns.ToList());
         //trigger watch
-        await wrapper.WatcherCallBack(watch);
-      
-        //code here
+        await wrapper.WatcherCallBack(ns.ToList());
         
         //deploy change to kube
+        
+        
         //code
         //verify update has occurred.
         //code
     }
 
+    [Test]
+    [TestCase(new object?[] {"default", "kube-system"})]
+    public async Task TestWatch(params string[] ns)
+    {
+        //Setup Data
+        var kommissar = new KommissarRepo(Mock.Of<ILogger<KommissarRepo>>());
+        var wrapper = new KubeWrapper(new KubernetesService(Mock.Of<ILogger<KubernetesService>>()), Mock.Of<ILogger<KubeWrapper>>(),
+            kommissar);
+        await wrapper.GetCurrentState(new List<string>() {ns[0]});
+        //trigger watch
+        await wrapper.WatcherCallBack(ns.ToList());
+        
+        //deploy change to kube
+        
+        
+        //code
+        //verify update has occurred.
+        //code
+    }
     
     [Test]
     [TestCase(3, 1, "abc-one")]

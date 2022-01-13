@@ -31,15 +31,15 @@ public class KubernetesService : IKubeRepo
         return nameSpaceList.Body;
     }
     
-    public async Task<HttpOperationResponse<V1PodList>> CreateWatch(IEnumerable<string> names)
+    public async ValueTask<List<Task<HttpOperationResponse<V1PodList>>>> CreateWatch(IEnumerable<string> names)
     {
         _logger.LogInformation("Creating Watchers");
         var client = await GetClient();
-        HttpOperationResponse<V1PodList> podlistResp = null;
+        var podlistResp = new List<Task<HttpOperationResponse<V1PodList>>>();
         foreach (var name in names)
         {
             _logger.LogInformation("Creating Watcher for {name}", name);
-            podlistResp = await client.ListNamespacedPodWithHttpMessagesAsync(name, watch: true);
+            podlistResp.Add(client.ListNamespacedPodWithHttpMessagesAsync(name, watch: true));
         }
         return podlistResp;
     }
