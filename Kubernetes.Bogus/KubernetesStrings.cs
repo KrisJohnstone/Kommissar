@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Bogus.Kubernetes;
 
 public static class KubernetesStrings
@@ -12,5 +14,4 @@ public static class KubernetesStrings
     {
         "test", "prod", "development", "acceptance"
     };
-    
 }

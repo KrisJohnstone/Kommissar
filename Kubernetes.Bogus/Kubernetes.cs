@@ -41,27 +41,7 @@ public class KubernetesDataSet : DataSet
     /// Returns a 3 char representation of a project code.
     /// </summary>
     public string Project()
-    {
-        var prefix = new StringBuilder();  
-        var random = new Random();  
-
-        char letter;  
-
-        for (var i = 0; i < 3; i++)
-        {
-            var flt = random.NextDouble();
-            var shift = Convert.ToInt32(Math.Floor(25 * flt));
-            letter = Convert.ToChar(shift + 65);
-            prefix.Append(letter);  
-        }
-        return prefix.ToString();
-    }
-
-    /// <summary>
-    /// Returns a namespace with a random project and env.
-    /// </summary>
-    public string NamespaceWithEnvironment()
-        => $"{Project()}-{Container()}-{Environment()}";
+        => KubernetesMethods.Project();
 
     public V1Container GenerateContainer()
     {
@@ -70,5 +50,13 @@ public class KubernetesDataSet : DataSet
             Image = Container()
         };
     }
-    
+
+    public Faker<V1ObjectMeta> GenerateMetadata(string project, string version, string environment, 
+                                                                Dictionary<string, string> anno, bool generateLabels)
+        => KubernetesMethods.GenerateMetadata(project, version, environment, anno, generateLabels);
+
+    public V1DeploymentList GenerateDeploymentList(string project, string environment, string version,
+        int replicas = 3, int availableReplicas = 3, int readyReplicas = 3, int numberOfDeployments = 1)
+        => GenerateDeploymentList(project, environment, version, replicas, availableReplicas, replicas, numberOfDeployments);
+
 }
