@@ -20,7 +20,7 @@ public class Program
             logger.LogInformation("App Starting");
             
             // entry to run app
-            await serviceProvider.GetService<App>().Run(args);
+            await serviceProvider.GetService<AppService>().Run(args);
         }
         catch (Exception ex)
         {
@@ -53,11 +53,10 @@ public class Program
 
         // Add Services:
         services.AddTransient<IKubeRepo, KubernetesService>();
-        services.AddTransient<IKubeWrapper, KubeWrapper>();
-        services.AddSingleton<KommissarRepo>();
+        services.AddTransient<IDbRepository,DbRepository>();
 
         // Add App
-        services.AddTransient<App>();
+        services.AddTransient<IApp,AppService>();
         return services;
     }
 }

@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Bogus.Kubernetes;
 
 public static class KubernetesStrings

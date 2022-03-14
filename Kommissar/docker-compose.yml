@@ -1,7 +1,0 @@
-version: "3.9"
-services:
-  kommissar:
-    build:
-      context: .
-    environment:
-      - KUBECONFIG=$KUBECONFIG:$HOME/.kube/config

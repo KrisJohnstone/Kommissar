@@ -1,4 +1,3 @@
-using System.Text;
 using k8s.Models;
 
 namespace Bogus.Kubernetes;
@@ -58,5 +57,4 @@ public class KubernetesDataSet : DataSet
     public V1DeploymentList GenerateDeploymentList(string project, string environment, string version,
         int replicas = 3, int availableReplicas = 3, int readyReplicas = 3, int numberOfDeployments = 1)
         => GenerateDeploymentList(project, environment, version, replicas, availableReplicas, replicas, numberOfDeployments);
-
 }

@@ -1,7 +1,6 @@
 using k8s;
 using k8s.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Rest;
 
 namespace Kommissar.Repositories;
 public class KubernetesService : IKubeRepo
@@ -30,18 +29,21 @@ public class KubernetesService : IKubeRepo
         var nameSpaceList = await kube.ListNamespaceWithHttpMessagesAsync();
         return nameSpaceList.Body;
     }
-    
-    public async ValueTask<List<Task<HttpOperationResponse<V1PodList>>>> CreateWatch(IEnumerable<string> names)
+
+    public async ValueTask<List<V1Deployment>> GetListOfDeployments(string ns)
     {
-        _logger.LogInformation("Creating Watchers");
-        var client = await GetClient();
-        var podlistResp = new List<Task<HttpOperationResponse<V1PodList>>>();
-        foreach (var name in names)
-        {
-            _logger.LogInformation("Creating Watcher for {name}", name);
-            podlistResp.Add(client.ListNamespacedPodWithHttpMessagesAsync(name, watch: true));
-        }
-        return podlistResp;
+        _logger.LogInformation("Retrieving List of Deployments");
+        var kube = await GetClient();
+        var deps = await kube.ListNamespacedDeploymentWithHttpMessagesAsync(ns);
+        return deps.Body.Items as List<V1Deployment>;
+    }
+    
+    public async ValueTask<List<V1StatefulSet>> GetListOfStatefulSets(string ns)
+    {
+        _logger.LogInformation("Retrieving List of Deployments");
+        var kube = await GetClient();
+        var deps = await kube.ListNamespacedStatefulSetWithHttpMessagesAsync(ns);
+        return deps.Body.Items as List<V1StatefulSet>;
     }
 
     public async ValueTask<V1PodList> GetListOfPods(string ns)

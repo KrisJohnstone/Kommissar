@@ -8,61 +8,78 @@ using FluentAssertions;
 using k8s.Models;
 using Kommissar.Model;
 using Kommissar.Repositories;
+using Kommissar.Tests.Mocks;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
 namespace Kommissar.Tests;
 
 public class KommissarRepoTests
 {
-    private static KommissarRepo _kom = new KommissarRepo(new NullLogger<KommissarRepo>());
-    
-    private static async Task<List<V1Container>> AddContainers(string ns, int numberOfInstances)
-    {
-        var x = new Faker<V1Container>()
-            .RuleFor(u => u.Image, (f, u) => f.Kubernetes().Container())
-            .Generate(numberOfInstances);
-        
-        await _kom.AddOrUpdate("abc-wordpress", ImmutableArray.Create<V1Container>(x.ToArray()));
-        return x;
-    }
-
-    [Test]
-    [TestCase(1)]
-    [TestCase(3)]
-    public async Task Kommissar_AddTest(int number)
-    {
-        var containers = await AddContainers("abc-wordpress", number);
-        
-        //Check the container was added.
-        foreach (var container in containers)
+    private static DbRepository _kom = new DbRepository(new NullLogger<DbRepository>(), Options.Create(
+        new AppSettings()
         {
-            var result = await _kom.GetContainer("abc-wordpress", container.Image.Split(new[] {':'})[0]);
-            var containerSplit = container.Image.Split(new[] {':'});
-            result.ContainerName.Should().Be(containerSplit[0]);
-            result.ContainerVersion.Should().Be(containerSplit[1]);
-        }
-        containers.Count.Should().Be(number);
-    }
-
-    [Test]
-    public async Task Kommissar_UpdateTest()
-    {
-        var containers = await AddContainers("abc-wordpress", 1);
-
-        var originalContainer = await _kom.GetContainer("abc-wordpress", containers
-            .FirstOrDefault()?.Image.Split(new[] {':'}, StringSplitOptions.TrimEntries)[0]);
-        
-        var v = originalContainer.ContainerVersion.Split(new[] {'v', '.'}, StringSplitOptions.TrimEntries);
-        var newVersion = $"{v[0]}.{v[1]}.{v[2]+1}";
-        await _kom.AddOrUpdate("abc-wordpress", ImmutableArray.Create(new V1Container()
-        {
-            Image = $"{originalContainer.ContainerName}:{newVersion}"
+            DatabaseConnection = "mongodb://root:example@localhost:27017"
         }));
-        var result = await _kom.GetContainer("abc-wordpress", originalContainer.ContainerName);
 
-        result.ContainerName.Should().Be(originalContainer.ContainerName);
-        result.ContainerVersion.Should().NotBeSameAs(originalContainer.ContainerVersion);
-        result.ContainerVersion.Should().Be(newVersion);
+    [Test]
+    public async Task ContainerList_Add()
+    {
+        var x = MockUtils.MockContainerLists("namespace", 1, 3);
+        await _kom.AddNewList(x.FirstOrDefault());
+
+        var result = await _kom.GetDocumentAsync("namespace");
+        result.Containers.Count().Should().Be(3);
+        result.Namespace.Should().Be("namespace");
+    }
+
+    [Test]
+    public async Task ContainerList_AddContainers()
+    {
+        var x = MockUtils.MockContainerLists("namespace", 1, 3);
+        await _kom.AddNewList(x.FirstOrDefault());
+
+        var conts = MockUtils.MockContainerLists("namespace", 1, 3);
+        await _kom.UpdateContainers(conts.FirstOrDefault());
+
+        var result = await _kom.GetDocumentAsync("namespace");
+        result.Containers.Count().Should().Be(6);
+        result.Namespace.Should().Be("namespace");
+    }
+
+    [Test]
+    public async Task ContainerList_UpdateExisting()
+    {
+        var x = MockUtils.MockContainerLists("namespace", 1, 3);
+        await _kom.AddNewList(x.FirstOrDefault());
+
+        var conts = x.FirstOrDefault();
+        foreach (var container in conts.Containers)
+        {
+            container.ContainerVersion = "v100.0.5";
+        }
+
+        await _kom.UpdateContainers(conts);
+
+        var result = await _kom.GetDocumentAsync("namespace");
+        result.Containers.Count().Should().Be(3);
+        result.Namespace.Should().Be("namespace");
+        result.Containers.FirstOrDefault().ContainerVersion.Should().Be("v100.0.5");
+    }
+
+    [Test]
+    public async Task ContainerList_RemoveOld()
+    {
+        var first = MockUtils.MockContainerLists("namespace", 1, 3);
+        var second = MockUtils.MockContainerLists("abc", 1, 3);
+        await _kom.AddNewList(first.FirstOrDefault());
+        await _kom.AddNewList(second.FirstOrDefault());
+
+        await _kom.RemoveMissingDocuments(first);
+        var exists = await _kom.GetDocumentAsync("abc");
+        var notexist = await _kom.GetDocumentAsync("namespace");
+        exists.Should().NotBeNull();
+        notexist.Should().BeNull();
     }
 }

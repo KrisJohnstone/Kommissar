@@ -4,5 +4,6 @@ namespace Kommissar.Model
     {
         public string[] Namespaces { get; set; }
         public string ArtifactoryAPIKey { get; set; }
+        public string DatabaseConnection { get; set; }
     }
 }

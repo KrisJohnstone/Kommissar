@@ -1,6 +1,3 @@
-using System.Net;
-using Kommissar.Model;
-
 namespace Kommissar.Services;
 
 public class ArtifactoryService : IArtifactory
