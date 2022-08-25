@@ -2,8 +2,9 @@ namespace Kommissar.Model
 {
     public class AppSettings
     {
-        public string[] Namespaces { get; set; }
-        public string ArtifactoryAPIKey { get; set; }
+        public string[] NamespacesPrefix { get; set; }
+        public string ArtifactoryCredential { get; set; }
         public string DatabaseConnection { get; set; }
+        public string ArtifactoryBaseUri { get; set; }
     }
 }

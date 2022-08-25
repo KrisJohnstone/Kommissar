@@ -11,19 +11,21 @@ public class AppService : IApp
     private readonly ILogger _logger;
     private readonly IKubeRepo _kube;
     private readonly IDbRepository _db;
+    private readonly IArtifactory _artifactory;
 
-    public AppService(IOptions<AppSettings> appSettings, ILogger<AppService> logger, IKubeRepo kube, IDbRepository db)
+    public AppService(IOptions<AppSettings> appSettings, ILogger<AppService> logger, IKubeRepo kube, IDbRepository db, IArtifactory artifactory)
     {
         _logger = logger;
         _kube = kube;
         _db = db;
+        _artifactory = artifactory;
         _appSettings = appSettings.Value;
     }
 
     public async ValueTask Run(string[] args)
     {
         var namespaces = await GetEnvList(
-                                                    _appSettings.Namespaces.ToImmutableArray());
+                                                    _appSettings.NamespacesPrefix.ToImmutableArray());
         if (namespaces.Count == 0)
         {
             _logger.LogCritical("No Namespaces Returned from Cluster");
@@ -32,21 +34,24 @@ public class AppService : IApp
         
         // First we need to populate the dataset with current state.
         var conts = new List<ContainerList>();
-        namespaces.ForEach(async m =>
+        foreach (var ns in namespaces)
         {
+            _logger.LogInformation("Currently Getting Resources For: {namespace}", ns);
             var listConts = new List<Container>();
             
-            listConts.AddRange(await GetDeployments(m));
-            listConts.AddRange(await GetStatefulSets(m));
-            
-            conts.Add(new ContainerList()
+            listConts.AddRange(await GetDeployments(ns));
+            listConts.AddRange(await GetStatefulSets(ns));
+
+            if (listConts.Count > 0)
             {
-                Namespace = m,
-                Containers = listConts
-            });
-        });
-        
-        //now we need to populate the db
+                conts.Add(new ContainerList()
+                {
+                    Namespace = ns,
+                    Environment = ns.Substring(ns.LastIndexOf("-", StringComparison.Ordinal)+1),
+                    Containers = listConts
+                });
+            }
+        }
         await AddOrUpdate(conts);
     }
 
@@ -54,51 +59,43 @@ public class AppService : IApp
     {
         var liststs = new List<Container>();
         var sts = await _kube.GetListOfStatefulSets(ns);
-        sts.ForEach(i =>
+        foreach (var s in sts)
         {
-            var images = from c in i.Spec.Template.Spec.Containers select c.Image;
+            var images = from c in s.Spec.Template.Spec.Containers select c.Image;
             foreach (var image in images)
             {
-                var imageArray = image.Split(new[] {':', '/'}, StringSplitOptions.None);
-                var containerName = new string("");
-                var version = new string("");
-                containerName = imageArray[^2] == ":" ? imageArray[^3] : imageArray[^1];
-                version = imageArray[^1] == ":" ? imageArray[^1] : "latest";
-                
-                liststs.Add(new Container()
-                {
-                    ContainerName = containerName,
-                    FullPath = image,
-                    ContainerVersion = version
-                });
+                liststs.Add(await GenerateContainerUtil(image));
             }
-        });
+        }
         return liststs ;
+    }
+
+    public async ValueTask<Container> GenerateContainerUtil(string image)
+    {
+        var imageArray = image.Split(new[] {':', '/'}, StringSplitOptions.None);
+
+        return new Container()
+        {
+            ContainerName = imageArray[^2] == ":" ? imageArray[^3] : imageArray[^1],
+            ContainerVersion = imageArray[^1] == ":" ? imageArray[^1] : "latest",
+            Image = image,
+            Path = image.Substring(image.IndexOf("/", StringComparison.Ordinal)+1)
+            //end == -1 ? image.Substring(start) : image.Substring(start, image.Length - end)
+        };
     }
     
     public async ValueTask<List<Container>> GetDeployments(string ns)
     {
         var listdeps = new List<Container>();
         var deps = await _kube.GetListOfDeployments(ns);
-        deps.ForEach(i =>
+        foreach (var d in deps)
         {
-            var images = from c in i.Spec.Template.Spec.Containers select c.Image;
+            var images = from c in d.Spec.Template.Spec.Containers select c.Image;
             foreach (var image in images)
             {
-                var imageArray = image.Split(new[] {':', '/'}, StringSplitOptions.None);
-                var containerName = new string("");
-                var version = new string("");
-                containerName = imageArray[^2] == ":" ? imageArray[^3] : imageArray[^1];
-                version = imageArray[^1] == ":" ? imageArray[^1] : "latest";
-                
-                listdeps.Add(new Container()
-                {
-                    ContainerName = containerName,
-                    FullPath = image,
-                    ContainerVersion = version
-                });
+                listdeps.Add(await GenerateContainerUtil(image));
             }
-        });
+        }
         return listdeps;
     }
     
@@ -106,23 +103,48 @@ public class AppService : IApp
     {
         foreach (var container in containers)
         {
-            //This is mickey mouse but given we dont need to worry about scaling....
+            //This is completely mickey mouse but given we dont need to worry about scaling....
             var documents = await _db.GetDocumentAsync(container.Namespace);
             
             // namespace doesnt exist
             if (documents is null)
             {
                 await _db.AddNewList(container);
+                await ProcessArtifactoryUpdates(container);
                 continue;
             }
-
             await _db.UpdateContainers(container);
+            var process= await ProcessArtifactoryUpdates(container);
+            if (process is false)
+                throw new ApplicationException("Artifactory Update Failed.");
         }
         
         //namespace exists in db - remove
-        await _db.RemoveMissingDocuments(containers);
+        var remove = await _db.RemoveMissingDocuments(containers);
+        foreach (var r in remove)
+        {
+            await ProcessArtifactoryUpdates(r);
+        }
     }
 
+    public async ValueTask<bool> ProcessArtifactoryUpdates(ContainerList containerList)
+    {
+        foreach (var c in containerList.Containers)
+        {
+            var imageArray = c.Image.Split(new[] {':', '/'}, StringSplitOptions.None);
+            var result = await _artifactory.UpdateArtifactory(new ArtifactoryCopy()
+            {
+                copy = true,
+                dockerRepository = c.ContainerName,
+                targetRepo = imageArray[1],
+                targetTag = containerList.Environment
+            });
+            _logger.LogInformation("Container {name} Updated: {result}", c.ContainerName, result.Success);
+            return result.Success;
+        }
+        return false;
+    }
+    
     public async ValueTask<List<string>> GetEnvList(IEnumerable<string> filter)
     {
         var mbrNamespaces = new List<string>();
@@ -134,7 +156,6 @@ public class AppService : IApp
                 where item.Metadata.Name.Split(new[] {'-'})[0] == s
                 select item.Metadata.Name); ;
         }
-
         return mbrNamespaces.ToList();
     }
 }

@@ -37,7 +37,7 @@ public class DbRepository : IDbRepository
         await _mongo.ReplaceOneAsync(x => x.Id == containerList.Id, containerList);
     }
 
-    public async ValueTask RemoveMissingDocuments(List<ContainerList> list)
+    public async ValueTask<List<ContainerList>> RemoveMissingDocuments(List<ContainerList> list)
     {
         var remove = new List<string>();
         
@@ -46,8 +46,10 @@ public class DbRepository : IDbRepository
             remove.Add(container.Namespace);
         }
 
-        var filter = Builders<ContainerList>.Filter.In(d => d.Namespace, remove);
+        var filter = Builders<ContainerList>.Filter.Nin(d => d.Namespace, remove);
+        var documents = await _mongo.FindAsync(filter);
 
         await _mongo.DeleteManyAsync(filter);
+        return documents.ToList();
     }
 }

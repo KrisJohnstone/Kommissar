@@ -13,7 +13,7 @@ public class Program
     {
         var services = ConfigureServices();
         var serviceProvider = services.BuildServiceProvider();
-
+        
         try
         {
             var logger = serviceProvider.GetService<ILogger<Program>>();
